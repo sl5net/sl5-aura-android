@@ -34,7 +34,8 @@ class VoskProcessor(private val context: Context, private val listener: VoskList
         }
 
         private fun initVosk() {
-            StorageService.unpack(context, "model-en-us", "model",
+            // vosk-model-small-de-0.15
+            StorageService.unpack(context, "model-de", "model",
                                   { model ->
                                       this.model = model
                                       Log.d(LOG_TAG, "Model unpacked successfully!")
