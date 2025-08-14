@@ -1,87 +1,117 @@
+// app/src/main/java/de/sl5/aura/MainActivity.kt
 package de.sl5.aura
 
-import android.Manifest // Added for permission
-import android.content.pm.PackageManager // Added for permission
-
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
-
-import android.widget.Toast // Added for user feedback
-
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-
-import androidx.activity.result.contract.ActivityResultContracts // Added for permission
-
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-
-import androidx.core.content.ContextCompat // Added for permission
-
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import de.sl5.aura.ui.theme.SL5AuraTheme
+import org.json.JSONObject
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), VoskListener {
 
-    // 1. ADDED: Create a launcher that knows how to request a permission
+    private lateinit var voskProcessor: VoskProcessor
+    private var resultText by mutableStateOf("Requesting permission...")
+    private var isListening by mutableStateOf(false)
+
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            val message = if (isGranted) "Permission granted!" else "Permission denied."
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                initializeProcessor()
+            } else {
+                resultText = "Permission denied. App cannot function."
+                Toast.makeText(this, resultText, Toast.LENGTH_LONG).show()
+            }
         }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // 2. ADDED: Check for microphone permission at startup
         checkMicrophonePermission()
-
-        enableEdgeToEdge()
         setContent {
             SL5AuraTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                AuraScreen(
+                    resultText = resultText,
+                    isListening = isListening,
+                    onButtonClick = ::toggleRecognition
+                )
             }
         }
-
     }
-    // 3. ADDED: The function that handles the permission logic
+
     private fun checkMicrophonePermission() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                Toast.makeText(this, "Permission already granted.", Toast.LENGTH_SHORT).show()
-            }
-            else -> {
-                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            initializeProcessor()
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun initializeProcessor() {
+        resultText = "Initializing model..."
+        voskProcessor = VoskProcessor(this, this)
+    }
+
+    private fun toggleRecognition() {
+        if (isListening) {
+            voskProcessor.stopListening()
+        } else {
+            resultText = "Listening..."
+            voskProcessor.startListening()
+        }
+        isListening = !isListening
+    }
+
+    // --- Implementation of VoskListener ---
+    override fun onResult(text: String) {
+        val json = JSONObject(text)
+        if (json.getString("text").isNotBlank()) {
+            resultText = json.getString("text")
+        }
+    }
+
+    override fun onFinalResult() {
+        isListening = false
+    }
+
+    override fun onError(message: String) {
+        resultText = "Error: $message"
+        isListening = false
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::voskProcessor.isInitialized) {
+            voskProcessor.shutdown()
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    SL5AuraTheme {
-        Greeting("Aura")
+fun AuraScreen(resultText: String, isListening: Boolean, onButtonClick: () -> Unit) {
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = "SL5 Aura", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(40.dp))
+            Text(text = resultText)
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(onClick = onButtonClick) {
+                Text(if (isListening) "Stop Listening..." else "Start Recording")
+            }
+        }
     }
 }
