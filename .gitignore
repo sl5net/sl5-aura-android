@@ -2,6 +2,15 @@
 .DS_Store
 Thumbs.db
 
+# Vosk Models
+src/main/assets/vosk*
+src/main/assets/model*
+
+app/src/main/assets/vosk*
+app/src/main/assets/model*
+
+
+
 # Gradle files
 .gradle/
 build/

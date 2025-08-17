@@ -1,9 +1,13 @@
 // app/src/main/java/de/sl5/aura/MainActivity.kt
 package de.sl5.aura
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +29,17 @@ import org.json.JSONObject
 
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+
+import kotlinx.coroutines.launch
+
+// ... inside MainActivity class
+
+
+
+
 private var textFieldValue by mutableStateOf(TextFieldValue("Initializing"))
 
 class MainActivity : ComponentActivity(), VoskListener {
@@ -44,6 +59,9 @@ class MainActivity : ComponentActivity(), VoskListener {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        System.setProperty("javax.xml.parsers.SAXParserFactory", "org.apache.xerces.jaxp.SAXParserFactoryImpl")
+
         super.onCreate(savedInstanceState)
         checkMicrophonePermission()
         setContent {
@@ -76,26 +94,32 @@ class MainActivity : ComponentActivity(), VoskListener {
             voskProcessor.stopListening()
         } else {
             if (textFieldValue.text.startsWith("Initializing") || textFieldValue.text.startsWith("Error:")) {
-                textFieldValue = TextFieldValue("") // Wir setzen es auf ein leeres TextFieldValue
+                textFieldValue = TextFieldValue("")
             }
             voskProcessor.startListening()
         }
         isListening = !isListening
     }
 
-    override fun onResult(text: String) {
+        override fun onResult(text: String) {
         val json = JSONObject(text)
         val newText = json.getString("text")
 
-        if (newText.isNotBlank()) {
-            val currentText = if (textFieldValue.text.startsWith("Initializing")) "" else textFieldValue.text
-            val separator = if (currentText.isNotEmpty()) " " else ""
-            val fullText = currentText + separator + newText
+        Log.d("MainActivity", "Received result: $newText")
 
-            textFieldValue = TextFieldValue(
-                text = fullText,
-                selection = TextRange(fullText.length)
-            )
+        if (newText.isNotBlank()) {
+            lifecycleScope.launch {
+                val correctedText = LanguageToolHelper.correctText(newText)
+
+                val currentText = if (textFieldValue.text.startsWith("Initializing")) "" else textFieldValue.text
+                val separator = if (currentText.isNotEmpty()) " " else ""
+                val fullText = currentText + separator + correctedText
+
+                textFieldValue = TextFieldValue(
+                    text = fullText,
+                    selection = TextRange(fullText.length)
+                )
+            }
         }
     }
 
@@ -104,8 +128,12 @@ class MainActivity : ComponentActivity(), VoskListener {
     }
 
     override fun onError(message: String) {
+        Log.e("MainActivity", "Vosk Error: $message")
+
         resultText = "Error: $message"
         isListening = false
+
+
     }
 
     override fun onDestroy() {

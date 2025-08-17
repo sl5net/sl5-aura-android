@@ -21,7 +21,11 @@ interface VoskListener {
     fun onFinalResult()
 }
 
+
+
 class VoskProcessor(private val context: Context, private val listener: VoskListener) {
+
+
 
     private var model: Model? = null
         private var isListening = false
@@ -34,8 +38,8 @@ class VoskProcessor(private val context: Context, private val listener: VoskList
         }
 
         private fun initVosk() {
-            // vosk-model-small-de-0.15
-            StorageService.unpack(context, "model-de", "model",
+            // vosk-model-small-de-0.15 vosk-model-de-0.21
+            StorageService.unpack(context, "vosk-model-de", "model",
                                   { model ->
                                       this.model = model
                                       Log.d(LOG_TAG, "Model unpacked successfully!")
