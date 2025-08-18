@@ -1,30 +1,45 @@
+@file:Suppress("UnstableApiUsage")
 
+@Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.aboutLibraries)
+    alias(libs.plugins.ktlint)
 }
 
 android {
-    namespace = "de.sl5.aura"
+    namespace = "cz.lastaapps.languagetool"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.sl5.aura"
-        minSdk = 24
+        applicationId = "cz.lastaapps.languagetool"
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
-        release {
+        debug {
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+
+            extra.set("alwaysUpdateBuildId", false)
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -34,28 +49,84 @@ android {
     }
     kotlinOptions {
         jvmTarget = "11"
+        freeCompilerArgs += listOf("-Xcontext-receivers")
     }
     buildFeatures {
         compose = true
     }
+    composeOptions {
+        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+
+            excludes.add("com/sun/xml/bind/**")
+            excludes.add("com/sun/istack/**")
+        }
+        jniLibs.pickFirsts.add("**/libvosk.so")
+        jniLibs.pickFirsts.add("**/libvosk_jni.so")
+        pickFirst("com/sun/jna/**")
+        pickFirst("javax/activation/**")
+        pickFirst("org/intellij/lang/annotations/**")
+        pickFirst("org/jetbrains/annotations/**")
+    }
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
+
+//    packaging {
+//        resources {
+//            excludes.add("META-INF/**")
+//            excludes.add("com/sun/xml/bind/**")
+//            excludes.add("com/sun/istack/**")
+//        }
+//        jniLibs.pickFirsts.add("**/libvosk.so")
+//        jniLibs.pickFirsts.add("**/libvosk_jni.so")
+//        pickFirst("com/sun/jna/**")
+//        pickFirst("javax/activation/**")
+//        pickFirst("org/intellij/lang/annotations/**")
+//        pickFirst("org/jetbrains/annotations/**")
+//    }
+
 }
 
 dependencies {
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(platform(libs.arrowkt.bom))
+    implementation(platform(libs.ktor.bom))
+
     implementation(libs.vosk.android)
+
+    implementation(libs.bundles.androidx.compose)
+    implementation(libs.bundles.androidx.lifecycle)
+    implementation(libs.bundles.arrowkt)
+    implementation(libs.bundles.koin)
+    implementation(libs.bundles.kotlinx)
+    implementation(libs.bundles.ktor.client)
+
+    implementation(libs.aboutLibraries.core)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.annotation)
+    implementation(libs.androidx.core)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.emoji2.bundled)
+    implementation(libs.androidx.emoji2.core)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation.ui)
+    implementation(libs.google.material)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.kotest.runner)
+    testImplementation(libs.kotest.assertions)
 }
